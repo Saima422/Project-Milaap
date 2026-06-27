@@ -10,8 +10,58 @@
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-192.png">
   <link rel="stylesheet" href="styles.css">
+  <script src="stations.js"></script>
   <script src="install-prompt.js"></script>
   <title>Scanner — Kumbh Sahayak</title>
+  <style>
+    .compact-station {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 14px;
+      margin-bottom: 10px;
+    }
+    .compact-station-name { font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; }
+    .compact-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+    .dist-badge { font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+    .dist-near { background: #d1fae5; color: #065f46; }
+    .dist-mid  { background: #fef3c7; color: #92400e; }
+    .dist-far  { background: #f3f4f6; color: #6b7280; }
+    .arrow-icon { display: inline-block; }
+    .maps-note { font-size: 0.72rem; color: var(--text-secondary); margin-top: 4px; }
+    .zone-grid-sm {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin: 10px 0;
+    }
+    .zone-btn-sm {
+      min-height: 48px;
+      background: var(--surface);
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      cursor: pointer;
+    }
+    .zone-btn-sm.active {
+      border-color: var(--primary);
+      background: #e8f5f0;
+      color: var(--primary);
+    }
+    .upload-area {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 32px 16px;
+      text-align: center;
+      cursor: pointer;
+      background: var(--background);
+      transition: border-color 0.15s;
+    }
+    .upload-area:hover { border-color: var(--primary); }
+    .upload-area input { display: none; }
+  </style>
 </head>
 <body>
   <div id="install-banner" style="display:none; align-items:center; justify-content:space-between; background:#1D9E75; color:white; padding:10px 16px; font-size:14px; gap:8px;">
@@ -29,22 +79,38 @@
   <div id="toast" class="toast"></div>
 
   <div class="page">
-    <!-- Scanner section -->
-    <div class="card" id="scanner-section">
-      <h2 style="margin-bottom:12px;">Scan Wristband</h2>
-      <div id="scanner-reader" style="width:100%;"></div>
-      <div id="camera-error" style="display:none; background:#FCEBEB; border:1px solid #E24B4A; color:#A32D2D; padding:12px 16px; border-radius:8px; font-size:14px; margin-top:8px;">
-        Camera access denied. Please allow camera access in your browser settings to scan wristbands.
+
+    <!-- Tabs: Scan QR / Upload QR -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchScanTab('camera', this)">📷 Scan QR</button>
+      <button class="tab-btn" onclick="switchScanTab('upload', this)">🖼 Upload QR</button>
+    </div>
+
+    <!-- Camera scanner tab -->
+    <div id="tab-camera" class="tab-panel active">
+      <div class="card" id="scanner-section">
+        <h2 style="margin-bottom:12px;">Scan Wristband</h2>
+        <div id="scanner-reader" style="width:100%;"></div>
+        <div id="camera-error" style="display:none; background:#FCEBEB; border:1px solid #E24B4A; color:#A32D2D; padding:12px 16px; border-radius:8px; font-size:14px; margin-top:8px;">
+          Camera access denied. Please allow camera access in your browser settings to scan wristbands.
+        </div>
+        <button id="scanner-btn" class="btn btn-primary" style="margin-top:12px;" onclick="toggleScanner()">
+          📷 Start Scanning
+        </button>
       </div>
-      <button id="scanner-btn" class="btn btn-primary" style="margin-top:12px;" onclick="toggleScanner()">
-        📷 Start Scanning
-      </button>
-      <div style="display:flex;align-items:center;gap:10px;margin-top:10px;">
-        <span style="font-size:0.8rem;color:var(--text-secondary);">or</span>
-        <label class="btn btn-ghost btn-sm" style="cursor:pointer;margin:0;">
-          🖼 Upload QR Image
-          <input type="file" id="qr-upload" accept="image/*" style="display:none;" onchange="uploadQR(this)">
+    </div>
+
+    <!-- Upload QR tab -->
+    <div id="tab-upload" class="tab-panel">
+      <div class="card">
+        <h2 style="margin-bottom:12px;">Upload QR Code</h2>
+        <label class="upload-area" for="qr-file-input">
+          <div style="font-size:2.5rem;margin-bottom:8px;">🖼</div>
+          <div style="font-weight:600;margin-bottom:4px;">Upload a QR code image</div>
+          <div style="font-size:0.85rem;color:var(--text-secondary);">Tap to choose a photo from your device</div>
+          <input type="file" id="qr-file-input" accept="image/*" onchange="uploadQR(this)">
         </label>
+        <div id="qr-file-reader" style="display:none;"></div>
       </div>
     </div>
 
@@ -76,10 +142,27 @@
           Scan Another
         </button>
       </div>
-    </div>
 
-    <!-- Hidden element for file-based QR decoding -->
-    <div id="qr-file-reader" style="display:none;"></div>
+      <!-- Nearest Help Booths section -->
+      <div id="booths-section" class="card">
+        <h3 style="margin-bottom:12px;">Nearest Help Booths</h3>
+        <div id="booths-loading" style="text-align:center;padding:12px 0;color:var(--text-secondary);">
+          <div class="spinner-center"><div class="spinner"></div></div>
+          <p style="margin-top:8px;font-size:0.9rem;">Finding nearest booths…</p>
+        </div>
+        <div id="booths-zone-picker" style="display:none;">
+          <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:8px;">Location unavailable. Select your zone:</p>
+          <div class="zone-grid-sm">
+            <button class="zone-btn-sm" onclick="selectBoothZone('Zone-1', this)">Zone-1</button>
+            <button class="zone-btn-sm" onclick="selectBoothZone('Zone-2', this)">Zone-2</button>
+            <button class="zone-btn-sm" onclick="selectBoothZone('Zone-3', this)">Zone-3</button>
+            <button class="zone-btn-sm" onclick="selectBoothZone('Zone-4', this)">Zone-4</button>
+            <button class="zone-btn-sm" style="grid-column:1/-1;" onclick="selectBoothZone('Zone-5', this)">Zone-5</button>
+          </div>
+        </div>
+        <div id="booths-results"></div>
+      </div>
+    </div>
 
     <!-- Manual fallback -->
     <div style="text-align:center;padding:12px 0;border-top:1px solid var(--border);margin-top:8px;">
@@ -108,6 +191,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
       Register
     </a>
+    <a href="booths.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      Booths
+    </a>
   </nav>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
@@ -124,6 +211,18 @@
       clearTimeout(window._toastTimer);
       window._toastTimer = setTimeout(() => t.classList.remove('show'), 4000);
     }
+
+    // ── Tab switching ──────────────────────────────────────────────────────────
+
+    function switchScanTab(name, btn) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + name).classList.add('active');
+      if (name !== 'camera' && scannerRunning) stopScanner();
+    }
+
+    // ── Camera scanner ─────────────────────────────────────────────────────────
 
     function toggleScanner() {
       if (scannerRunning) stopScanner();
@@ -163,6 +262,23 @@
       }
     }
 
+    // ── Upload QR (jsQR) ───────────────────────────────────────────────────────
+
+    async function uploadQR(input) {
+      const file = input.files[0];
+      if (!file) return;
+      input.value = '';
+      const fileScanner = new Html5Qrcode('qr-file-reader');
+      try {
+        const result = await fileScanner.scanFile(file, false);
+        onScanSuccess(result);
+      } catch {
+        showToast('No QR code found in this image. Try a clearer photo.', 'error');
+      }
+    }
+
+    // ── Shared scan handler ────────────────────────────────────────────────────
+
     async function onScanSuccess(text) {
       stopScanner();
 
@@ -170,6 +286,11 @@
       if (text.trim().startsWith('{')) {
         try {
           const d = JSON.parse(text);
+          const hasData = d.id || d.n || d.wb;
+          if (!hasData) {
+            showNoData();
+            return;
+          }
           const profile = {
             case_id: d.id || '',
             wristband_id: d.wb || '',
@@ -187,9 +308,15 @@
           showProfile(profile);
           return;
         } catch {
-          showToast('Invalid QR code data', 'error');
+          showNoData();
           return;
         }
+      }
+
+      // Plain text QR with no meaningful content
+      if (!text.trim()) {
+        showNoData();
+        return;
       }
 
       // Legacy wristband ID lookup
@@ -208,6 +335,25 @@
       }
     }
 
+    // ── Profile display ────────────────────────────────────────────────────────
+
+    function showNoData() {
+      document.getElementById('not-found-msg').style.display = 'none';
+      document.getElementById('profile-section').style.display = 'none';
+      const existing = document.getElementById('no-data-msg');
+      if (!existing) {
+        const div = document.createElement('div');
+        div.id = 'no-data-msg';
+        div.className = 'card';
+        div.style.textAlign = 'center';
+        div.innerHTML = `
+          <p style="font-size:1.1rem;font-weight:700;margin-bottom:6px;">No data present</p>
+          <p style="font-size:0.9rem;color:var(--text-secondary);">This QR code does not contain any person data.</p>
+          <button class="btn btn-ghost btn-sm" style="margin-top:12px;" onclick="this.closest('#no-data-msg').remove()">Dismiss</button>`;
+        document.getElementById('profile-section').insertAdjacentElement('beforebegin', div);
+      }
+    }
+
     function showProfile(p) {
       document.getElementById('not-found-msg').style.display = 'none';
       document.getElementById('profile-section').style.display = 'block';
@@ -220,7 +366,7 @@
       document.getElementById('profile-case-id').textContent = p.case_id;
       document.getElementById('profile-booth').textContent = p.booth_id || '—';
 
-      const statusMap = { pending: 'badge-pending', searching: 'badge-searching', reunified: 'badge-reunified' };
+      const statusMap = { pending: 'badge-pending', searching: 'badge-searching', reunified: 'badge-reunified', registered: 'badge-prereg' };
       document.getElementById('profile-status-badge').innerHTML =
         `<span class="badge ${statusMap[p.status] || ''}">${p.status}</span>`;
 
@@ -229,7 +375,73 @@
         p.gender, p.language, p.zone, p.status
       ].filter(Boolean).map(v => `<span class="pill badge-found">${v}</span>`).join('');
       document.getElementById('profile-pills').innerHTML = pills;
+
+      // Trigger nearest booths
+      loadNearestBooths();
     }
+
+    // ── Nearest booths ─────────────────────────────────────────────────────────
+
+    function distClass(km) {
+      if (km < 1) return 'dist-near';
+      if (km <= 3) return 'dist-mid';
+      return 'dist-far';
+    }
+
+    function renderCompactStations(stations, showDistance) {
+      const container = document.getElementById('booths-results');
+      container.innerHTML = stations.map(s => {
+        const distHtml = showDistance
+          ? `<span class="dist-badge ${distClass(s.distance)}">${s.distance.toFixed(1)} km</span>
+             <span style="font-size:0.8rem;color:var(--text-secondary);">
+               <span class="arrow-icon" style="transform:rotate(${s.bearing}deg);display:inline-block;">↑</span>
+               ${s.bearingLabel}
+             </span>` : '';
+        const mapsUrl = getMapsUrl(s.lat, s.lng, s.name);
+        return `
+          <div class="compact-station">
+            <div class="compact-station-name">${s.name}</div>
+            <div class="compact-meta">${distHtml}</div>
+            <a href="${mapsUrl}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm" style="display:inline-block;text-decoration:none;">🗺 Get Directions</a>
+            <div class="maps-note">Opens Google Maps. Requires internet.</div>
+          </div>`;
+      }).join('');
+    }
+
+    function loadNearestBooths() {
+      const section = document.getElementById('booths-section');
+      const loading = document.getElementById('booths-loading');
+      const zonePicker = document.getElementById('booths-zone-picker');
+      const results = document.getElementById('booths-results');
+
+      section.style.display = 'block';
+      loading.style.display = 'block';
+      zonePicker.style.display = 'none';
+      results.innerHTML = '';
+
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          loading.style.display = 'none';
+          const { latitude, longitude } = pos.coords;
+          const nearest = getNearestStations(latitude, longitude, 3);
+          renderCompactStations(nearest, true);
+        },
+        () => {
+          loading.style.display = 'none';
+          zonePicker.style.display = 'block';
+        },
+        { timeout: 8000 }
+      );
+    }
+
+    function selectBoothZone(zone, btn) {
+      document.querySelectorAll('.zone-btn-sm').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const stations = getStationsByZone(zone).sort((a, b) => a.name.localeCompare(b.name));
+      renderCompactStations(stations, false);
+    }
+
+    // ── Mark found / reset ─────────────────────────────────────────────────────
 
     async function markFoundAtBoothB() {
       if (!currentProfile) return;
@@ -262,28 +474,14 @@
       }
     }
 
-    async function uploadQR(input) {
-      const file = input.files[0];
-      if (!file) return;
-      input.value = '';
-      if (scannerRunning) await new Promise(resolve => qrCode.stop().then(resolve).catch(resolve));
-      scannerRunning = false;
-      document.getElementById('scanner-btn').textContent = '📷 Start Scanning';
-
-      const fileScanner = new Html5Qrcode('qr-file-reader');
-      try {
-        const result = await fileScanner.scanFile(file, false);
-        onScanSuccess(result);
-      } catch {
-        showToast('Could not read QR code from image. Try a clearer photo.', 'error');
-      }
-    }
-
     function resetScanner() {
       currentProfile = null;
       document.getElementById('profile-section').style.display = 'none';
       document.getElementById('not-found-msg').style.display = 'none';
+      const noData = document.getElementById('no-data-msg');
+      if (noData) noData.remove();
       document.getElementById('scanner-reader').innerHTML = '';
+      document.getElementById('booths-results').innerHTML = '';
       qrCode = null;
       scannerRunning = false;
       document.getElementById('scanner-btn').textContent = '📷 Start Scanning';
