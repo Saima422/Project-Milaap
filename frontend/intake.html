@@ -11,9 +11,15 @@
   <link rel="apple-touch-icon" href="icon-192.png">
   <link rel="stylesheet" href="styles.css">
   <script src="install-prompt.js"></script>
+  <script src="sync.js"></script>
   <title>Intake — Kumbh Sahayak</title>
 </head>
 <body>
+  <!-- Offline / queue status bar -->
+  <div id="offline-bar" style="display:none;align-items:center;justify-content:space-between;background:#B45309;color:white;padding:8px 16px;font-size:13px;gap:8px;">
+    <span id="offline-bar-text">You are offline — cases will be saved locally and synced when reconnected.</span>
+    <button onclick="manualFlush()" style="background:white;color:#B45309;border:none;padding:4px 12px;border-radius:6px;font-weight:600;cursor:pointer;font-size:12px;">Sync Now</button>
+  </div>
   <div id="install-banner" style="display:none; align-items:center; justify-content:space-between; background:#1D9E75; color:white; padding:10px 16px; font-size:14px; gap:8px;">
     <span>Install Kumbh Sahayak for offline use</span>
     <div style="display:flex;gap:8px;flex-shrink:0">
@@ -419,13 +425,13 @@
           contact_number: '',
           wristband_id: document.getElementById('found-wristband-id').value || undefined,
         };
-        const res = await fetch(BOOTH_A + '/case/found', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Server error');
-        showToast('Found case created — Case ID: ' + data.case_id, 'success');
+        const result = await submitWithOfflineSupport(BOOTH_A + '/case/found', body);
+        if (result.online) {
+          showToast('Found case created — Case ID: ' + result.data.case_id, 'success');
+        } else {
+          showToast('Offline — case saved locally, will sync when reconnected.', 'error');
+          updateOfflineBar();
+        }
         document.getElementById('form-found').reset();
         document.getElementById('found-preview').classList.remove('show');
         document.getElementById('found-wristband-id').value = '';
@@ -461,13 +467,13 @@
           photo_base64,
           contact_number: document.getElementById('missing-contact').value,
         };
-        const res = await fetch(BOOTH_A + '/case/missing', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body)
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Server error');
-        showToast('Missing report filed — Case ID: ' + data.case_id, 'success');
+        const result = await submitWithOfflineSupport(BOOTH_A + '/case/missing', body);
+        if (result.online) {
+          showToast('Missing report filed — Case ID: ' + result.data.case_id, 'success');
+        } else {
+          showToast('Offline — report saved locally, will sync when reconnected.', 'error');
+          updateOfflineBar();
+        }
         document.getElementById('form-missing').reset();
         document.getElementById('missing-preview').classList.remove('show');
       } catch (err) {
@@ -477,6 +483,40 @@
         btn.textContent = 'Report Missing Person';
       }
     }
+
+    async function updateOfflineBar() {
+      const bar  = document.getElementById('offline-bar');
+      const text = document.getElementById('offline-bar-text');
+      const n    = await queueLength();
+      if (!navigator.onLine || n > 0) {
+        bar.style.display = 'flex';
+        text.textContent = navigator.onLine
+          ? `Back online — ${n} case${n !== 1 ? 's' : ''} queued. Tap Sync Now to upload.`
+          : `Offline — ${n} case${n !== 1 ? 's' : ''} saved locally, will sync when reconnected.`;
+      } else {
+        bar.style.display = 'none';
+      }
+    }
+
+    async function manualFlush() {
+      const btn = document.querySelector('#offline-bar button');
+      btn.textContent = 'Syncing…';
+      btn.disabled = true;
+      const n = await flushQueue();
+      btn.textContent = 'Sync Now';
+      btn.disabled = false;
+      if (n > 0) showToast(`Synced ${n} queued case${n !== 1 ? 's' : ''}.`, 'success');
+      updateOfflineBar();
+    }
+
+    window.addEventListener('offline', updateOfflineBar);
+    window.addEventListener('online', async () => {
+      const n = await flushQueue();
+      if (n > 0) showToast(`Back online — synced ${n} queued case${n !== 1 ? 's' : ''}.`, 'success');
+      updateOfflineBar();
+    });
+
+    updateOfflineBar();
   </script>
   <script>
     if ('serviceWorker' in navigator) {

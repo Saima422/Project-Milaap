@@ -7,6 +7,7 @@ const CACHED_FILES = [
   '/operator.html',
   '/dashboard.html',
   '/styles.css',
+  '/sync.js',
   '/offline.html',
   '/manifest.json',
   '/icon-192.png',

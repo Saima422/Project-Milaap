@@ -11,6 +11,7 @@
   <link rel="apple-touch-icon" href="icon-192.png">
   <link rel="stylesheet" href="styles.css">
   <script src="install-prompt.js"></script>
+  <script src="sync.js"></script>
   <title>Dashboard — Kumbh Sahayak</title>
 </head>
 <body>
@@ -37,6 +38,11 @@
           <div id="sync-indicator" style="font-size:0.8rem;font-weight:600;color:var(--text-secondary);">Idle</div>
         </div>
         <button id="sync-btn" class="btn btn-primary btn-sm" onclick="runSync()">⟳ Sync Now</button>
+      </div>
+      <div style="display:flex;gap:12px;margin-top:6px;font-size:0.78rem;">
+        <span>Booth A: <span id="status-a" style="font-weight:600;">—</span></span>
+        <span>Booth B: <span id="status-b" style="font-weight:600;">—</span></span>
+        <span style="color:var(--text-secondary);" id="auto-sync-label"></span>
       </div>
       <div class="sync-steps" id="sync-steps">
         <div class="step-row" id="step-1"><span class="step-icon step-idle">1</span> Export from Booth A</div>
@@ -113,13 +119,15 @@
   <script>
     const BOOTH_A = 'http://localhost:3001';
     const BOOTH_B = 'http://localhost:3002';
-    const REFRESH_INTERVAL = 10;
+    const REFRESH_INTERVAL  = 10;   // display refresh (seconds)
+    const AUTO_SYNC_INTERVAL = 60;  // cross-booth sync (seconds)
 
     let casesA = [], casesB = [];
     let filterA = 'all', filterB = 'all';
     let lastUpdated = null;
     let refreshTimer = null;
     let secondsAgo = 0;
+    let autoSyncCountdown = AUTO_SYNC_INTERVAL;
 
     function showToast(msg, type = 'success') {
       const t = document.getElementById('toast');
@@ -192,17 +200,22 @@
       `;
     }
 
+    function setBoothStatus(el, online) {
+      el.textContent = online ? 'Online' : 'Offline';
+      el.style.color = online ? 'var(--primary)' : 'var(--danger)';
+    }
+
     async function loadBoth() {
-      try {
-        const [resA, resB] = await Promise.all([
-          fetch(BOOTH_A + '/cases').then(r => r.ok ? r.json() : null).catch(() => null),
-          fetch(BOOTH_B + '/cases').then(r => r.ok ? r.json() : null).catch(() => null),
-        ]);
-        if (resA) { casesA = resA.cases || []; renderCounts(casesA, 'a-counts'); renderCases(casesA, 'cases-a', filterA); }
-        if (resB) { casesB = resB.cases || []; renderCounts(casesB, 'b-counts'); renderCases(casesB, 'cases-b', filterB); }
-        lastUpdated = Date.now();
-        secondsAgo = 0;
-      } catch { /* silent */ }
+      const [resA, resB] = await Promise.all([
+        fetch(BOOTH_A + '/cases').then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch(BOOTH_B + '/cases').then(r => r.ok ? r.json() : null).catch(() => null),
+      ]);
+      setBoothStatus(document.getElementById('status-a'), !!resA);
+      setBoothStatus(document.getElementById('status-b'), !!resB);
+      if (resA) { casesA = resA.cases || []; renderCounts(casesA, 'a-counts'); renderCases(casesA, 'cases-a', filterA); }
+      if (resB) { casesB = resB.cases || []; renderCounts(casesB, 'b-counts'); renderCases(casesB, 'cases-b', filterB); }
+      lastUpdated = Date.now();
+      secondsAgo = 0;
     }
 
     function setFilter(booth, filter, btn) {
@@ -295,18 +308,47 @@
       }
     }
 
-    // Auto-refresh every 10s
+    // Tick every second: refresh display every 10s, auto-sync booths every 60s
     function startAutoRefresh() {
       clearInterval(refreshTimer);
       refreshTimer = setInterval(async () => {
         secondsAgo++;
-        document.getElementById('refresh-indicator').textContent = `Last updated: ${secondsAgo}s ago`;
+        autoSyncCountdown--;
+
+        document.getElementById('refresh-indicator').textContent =
+          `Last updated: ${secondsAgo}s ago`;
+        document.getElementById('auto-sync-label').textContent =
+          navigator.onLine
+            ? `Auto-sync in ${autoSyncCountdown}s`
+            : 'Offline — auto-sync paused';
+
         if (secondsAgo >= REFRESH_INTERVAL) {
           await loadBoth();
           secondsAgo = 0;
         }
+
+        if (autoSyncCountdown <= 0) {
+          autoSyncCountdown = AUTO_SYNC_INTERVAL;
+          if (navigator.onLine) {
+            showToast('Auto-syncing booths…', 'success');
+            await runSync();
+          }
+        }
       }, 1000);
     }
+
+    // When browser comes back online: flush any queued intake submissions, then sync booths
+    window.addEventListener('online', async () => {
+      showToast('Back online — syncing…', 'success');
+      const flushed = await flushQueue();
+      if (flushed > 0) showToast(`Flushed ${flushed} offline submission${flushed !== 1 ? 's' : ''}.`, 'success');
+      autoSyncCountdown = 0; // trigger cross-booth sync on next tick
+    });
+
+    window.addEventListener('offline', () => {
+      setBoothStatus(document.getElementById('status-a'), false);
+      setBoothStatus(document.getElementById('status-b'), false);
+    });
 
     loadBoth();
     startAutoRefresh();
