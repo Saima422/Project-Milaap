@@ -134,6 +134,33 @@ app.post('/match/reject', (req, res) => {
   res.json({ success: true });
 });
 
+// POST /register
+app.post('/register', (req, res) => {
+  const { family_name, contact_number, zone, name, age, gender, language, relationship, photo_base64 } = req.body;
+  const now = Date.now();
+  const registration_id = genId('KMP');
+  const wristband_id = genId('WB');
+
+  insertCase({
+    case_id: registration_id,
+    case_type: 'pre-registered',
+    wristband_id,
+    name,
+    age,
+    gender,
+    language,
+    zone,
+    photo_base64: photo_base64 || '',
+    contact_number,
+    status: 'registered',
+    booth_id: 'PRE-REGISTRATION',
+    last_updated: now,
+    created_at: now,
+  });
+
+  res.json({ success: true, registration_id, wristband_id, name, age, gender, zone, language });
+});
+
 app.listen(PORT, () => {
   console.log(`Booth: ${BOOTH_ID} running on port ${PORT}`);
 });
