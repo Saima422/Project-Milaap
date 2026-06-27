@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1D9E75">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Sahayak">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="styles.css">
+  <script src="install-prompt.js"></script>
+  <title>Dashboard — Kumbh Sahayak</title>
+</head>
+<body>
+  <div id="install-banner" style="display:none; align-items:center; justify-content:space-between; background:#1D9E75; color:white; padding:10px 16px; font-size:14px; gap:8px;">
+    <span>Install Kumbh Sahayak for offline use</span>
+    <div style="display:flex;gap:8px;flex-shrink:0">
+      <button onclick="installApp()" style="background:white; color:#1D9E75; border:none; padding:6px 14px; border-radius:6px; font-weight:600; cursor:pointer; font-size:13px;">Install</button>
+      <button onclick="dismissBanner()" style="background:transparent; color:white; border:none; font-size:18px; cursor:pointer; padding:0 4px;">x</button>
+    </div>
+  </div>
+  <nav class="navbar">
+    <span class="navbar-brand">Kumbh Sahayak</span>
+    <span class="navbar-page">Dashboard</span>
+  </nav>
+
+  <div id="toast" class="toast"></div>
+
+  <div class="page">
+    <!-- Sync control bar -->
+    <div class="sync-bar">
+      <div class="sync-row">
+        <div class="sync-status">
+          <div id="sync-timestamp">Never synced</div>
+          <div id="sync-indicator" style="font-size:0.8rem;font-weight:600;color:var(--text-secondary);">Idle</div>
+        </div>
+        <button id="sync-btn" class="btn btn-primary btn-sm" onclick="runSync()">⟳ Sync Now</button>
+      </div>
+      <div class="sync-steps" id="sync-steps">
+        <div class="step-row" id="step-1"><span class="step-icon step-idle">1</span> Export from Booth A</div>
+        <div class="step-row" id="step-2"><span class="step-icon step-idle">2</span> Send to Booth B</div>
+        <div class="step-row" id="step-3"><span class="step-icon step-idle">3</span> Export from Booth B</div>
+        <div class="step-row" id="step-4"><span class="step-icon step-idle">4</span> Send to Booth A</div>
+        <div class="step-row" id="step-5"><span class="step-icon step-idle">5</span> Run matcher on Booth A</div>
+        <div class="step-row" id="step-6"><span class="step-icon step-idle">6</span> Run matcher on Booth B</div>
+      </div>
+    </div>
+
+    <!-- Auto-refresh indicator -->
+    <div class="countdown" id="refresh-indicator">Last updated: just now</div>
+
+    <!-- Two-column booth layout -->
+    <div class="grid-2col">
+      <!-- Booth A -->
+      <div>
+        <div class="col-header">
+          <span class="col-header-title">Booth A</span>
+          <div class="col-counts" id="a-counts"></div>
+        </div>
+        <div class="filter-bar" id="filter-a">
+          <button class="filter-btn active" onclick="setFilter('a','all',this)">All</button>
+          <button class="filter-btn" onclick="setFilter('a','found',this)">Found</button>
+          <button class="filter-btn" onclick="setFilter('a','missing',this)">Missing</button>
+          <button class="filter-btn" onclick="setFilter('a','reunified',this)">Reunified</button>
+        </div>
+        <div id="cases-a"></div>
+      </div>
+
+      <!-- Booth B -->
+      <div>
+        <div class="col-header">
+          <span class="col-header-title">Booth B</span>
+          <div class="col-counts" id="b-counts"></div>
+        </div>
+        <div class="filter-bar" id="filter-b">
+          <button class="filter-btn active" onclick="setFilter('b','all',this)">All</button>
+          <button class="filter-btn" onclick="setFilter('b','found',this)">Found</button>
+          <button class="filter-btn" onclick="setFilter('b','missing',this)">Missing</button>
+          <button class="filter-btn" onclick="setFilter('b','reunified',this)">Reunified</button>
+        </div>
+        <div id="cases-b"></div>
+      </div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <a href="intake.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5"/><path d="M17.5 3.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 8.5-8.5z"/></svg>
+      Intake
+    </a>
+    <a href="scanner.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3m0 4h4m-4-4v4m-3-7h7"/></svg>
+      Scanner
+    </a>
+    <a href="operator.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+      Operator
+    </a>
+    <a href="dashboard.html" class="active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </a>
+  </nav>
+
+  <script>
+    const BOOTH_A = 'http://localhost:3001';
+    const BOOTH_B = 'http://localhost:3002';
+    const REFRESH_INTERVAL = 10;
+
+    let casesA = [], casesB = [];
+    let filterA = 'all', filterB = 'all';
+    let lastUpdated = null;
+    let refreshTimer = null;
+    let secondsAgo = 0;
+
+    function showToast(msg, type = 'success') {
+      const t = document.getElementById('toast');
+      t.className = 'toast show toast-' + type;
+      t.textContent = msg;
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => t.classList.remove('show'), 5000);
+    }
+
+    function timeAgo(ts) {
+      const diff = Date.now() - ts;
+      const mins = Math.floor(diff / 60000);
+      if (mins < 1) return 'just now';
+      if (mins === 1) return '1 min ago';
+      if (mins < 60) return `${mins} mins ago`;
+      return `${Math.floor(mins/60)}h ago`;
+    }
+
+    function statusBadgeClass(status) {
+      return { pending:'badge-pending', searching:'badge-searching', reunified:'badge-reunified' }[status] || 'badge-pending';
+    }
+    function typeBadgeClass(type) {
+      return type === 'found' ? 'badge-found' : 'badge-missing';
+    }
+
+    function renderCases(cases, containerId, filter) {
+      const container = document.getElementById(containerId);
+      const filtered = filter === 'all' ? cases : cases.filter(c => {
+        if (filter === 'found') return c.case_type === 'found';
+        if (filter === 'missing') return c.case_type === 'missing';
+        if (filter === 'reunified') return c.status === 'reunified';
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="empty-state" style="padding:24px;"><p style="font-size:0.9rem;">No cases to show.</p></div>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(c => `
+        <div class="case-card">
+          ${c.photo_base64
+            ? `<img class="photo-thumb" src="${c.photo_base64}" alt="${c.name||''}">`
+            : `<div class="photo-thumb" style="display:flex;align-items:center;justify-content:center;font-size:1.2rem;">👤</div>`
+          }
+          <div class="case-card-info">
+            <div class="case-card-name">${c.name || 'Unknown'}</div>
+            <div class="case-card-meta">${c.age ? c.age+' yrs' : ''} ${c.gender || ''}</div>
+            <div class="case-card-badges">
+              <span class="badge ${statusBadgeClass(c.status)}">${c.status}</span>
+              <span class="badge ${typeBadgeClass(c.case_type)}">${c.case_type.toUpperCase()}</span>
+              ${c.zone ? `<span class="badge" style="background:var(--background);color:var(--text-secondary);">${c.zone}</span>` : ''}
+              ${c.language ? `<span class="badge" style="background:var(--background);color:var(--text-secondary);">${c.language}</span>` : ''}
+            </div>
+            <div class="case-card-id">${c.case_id} &middot; ${timeAgo(c.created_at)}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function renderCounts(cases, countsId) {
+      const found = cases.filter(c => c.case_type === 'found').length;
+      const missing = cases.filter(c => c.case_type === 'missing').length;
+      document.getElementById(countsId).innerHTML = `
+        <span class="badge badge-found">${found} Found</span>
+        <span class="badge badge-missing">${missing} Missing</span>
+      `;
+    }
+
+    async function loadBoth() {
+      try {
+        const [resA, resB] = await Promise.all([
+          fetch(BOOTH_A + '/cases').then(r => r.ok ? r.json() : null).catch(() => null),
+          fetch(BOOTH_B + '/cases').then(r => r.ok ? r.json() : null).catch(() => null),
+        ]);
+        if (resA) { casesA = resA.cases || []; renderCounts(casesA, 'a-counts'); renderCases(casesA, 'cases-a', filterA); }
+        if (resB) { casesB = resB.cases || []; renderCounts(casesB, 'b-counts'); renderCases(casesB, 'cases-b', filterB); }
+        lastUpdated = Date.now();
+        secondsAgo = 0;
+      } catch { /* silent */ }
+    }
+
+    function setFilter(booth, filter, btn) {
+      if (booth === 'a') filterA = filter;
+      else filterB = filter;
+      document.querySelectorAll(`#filter-${booth} .filter-btn`).forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      if (booth === 'a') renderCases(casesA, 'cases-a', filterA);
+      else renderCases(casesB, 'cases-b', filterB);
+    }
+
+    function setStep(n, state) {
+      const row = document.getElementById('step-' + n);
+      if (!row) return;
+      const icon = row.querySelector('.step-icon');
+      icon.className = 'step-icon step-' + state;
+      icon.textContent = state === 'done' ? '✓' : state === 'error' ? '✗' : n;
+    }
+
+    async function runSync() {
+      const btn = document.getElementById('sync-btn');
+      btn.disabled = true;
+      btn.textContent = 'Syncing…';
+      document.getElementById('sync-steps').classList.add('show');
+      document.getElementById('sync-indicator').textContent = 'Syncing…';
+      document.getElementById('sync-indicator').style.color = 'var(--warning)';
+
+      // Reset all steps
+      for (let i = 1; i <= 6; i++) setStep(i, 'idle');
+
+      let totalSynced = 0, totalMatches = 0;
+
+      try {
+        // Step 1: Export from A
+        setStep(1, 'active');
+        const expA = await fetch(BOOTH_A + '/export').then(r => { if (!r.ok) throw new Error('Export A failed'); return r.json(); });
+        setStep(1, 'done');
+
+        // Step 2: Send to B
+        setStep(2, 'active');
+        const sync2 = await fetch(BOOTH_B + '/sync', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ cases: expA.cases }) }).then(r => { if (!r.ok) throw new Error('Sync to B failed'); return r.json(); });
+        totalSynced += sync2.synced_count; totalMatches += sync2.new_matches_count;
+        setStep(2, 'done');
+
+        // Step 3: Export from B
+        setStep(3, 'active');
+        const expB = await fetch(BOOTH_B + '/export').then(r => { if (!r.ok) throw new Error('Export B failed'); return r.json(); });
+        setStep(3, 'done');
+
+        // Step 4: Send to A
+        setStep(4, 'active');
+        const sync4 = await fetch(BOOTH_A + '/sync', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ cases: expB.cases }) }).then(r => { if (!r.ok) throw new Error('Sync to A failed'); return r.json(); });
+        totalSynced += sync4.synced_count; totalMatches += sync4.new_matches_count;
+        setStep(4, 'done');
+
+        // Step 5: Match run A
+        setStep(5, 'active');
+        const match5 = await fetch(BOOTH_A + '/match/run', { method:'POST' }).then(r => { if (!r.ok) throw new Error('Match run A failed'); return r.json(); });
+        totalMatches += (match5.new_matches || []).length;
+        setStep(5, 'done');
+
+        // Step 6: Match run B
+        setStep(6, 'active');
+        const match6 = await fetch(BOOTH_B + '/match/run', { method:'POST' }).then(r => { if (!r.ok) throw new Error('Match run B failed'); return r.json(); });
+        totalMatches += (match6.new_matches || []).length;
+        setStep(6, 'done');
+
+        // Step 7: Refresh display
+        await loadBoth();
+
+        const now = new Date().toLocaleTimeString();
+        document.getElementById('sync-timestamp').textContent = 'Last synced: ' + now;
+        document.getElementById('sync-indicator').textContent = `✓ Sync complete`;
+        document.getElementById('sync-indicator').style.color = 'var(--primary)';
+        showToast(`Sync complete — ${totalSynced} cases synced, ${totalMatches} new matches found`, 'success');
+        setTimeout(() => document.getElementById('sync-steps').classList.remove('show'), 3000);
+
+      } catch (err) {
+        document.getElementById('sync-indicator').textContent = '✗ ' + err.message;
+        document.getElementById('sync-indicator').style.color = 'var(--danger)';
+        showToast('Sync failed: ' + err.message, 'error');
+        // Mark remaining steps as error if any active
+        for (let i = 1; i <= 6; i++) {
+          const row = document.getElementById('step-' + i);
+          if (row && row.querySelector('.step-active')) setStep(i, 'error');
+        }
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '⟳ Sync Now';
+      }
+    }
+
+    // Auto-refresh every 10s
+    function startAutoRefresh() {
+      clearInterval(refreshTimer);
+      refreshTimer = setInterval(async () => {
+        secondsAgo++;
+        document.getElementById('refresh-indicator').textContent = `Last updated: ${secondsAgo}s ago`;
+        if (secondsAgo >= REFRESH_INTERVAL) {
+          await loadBoth();
+          secondsAgo = 0;
+        }
+      }, 1000);
+    }
+
+    loadBoth();
+    startAutoRefresh();
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => { navigator.serviceWorker.register('/service-worker.js'); });
+    }
+  </script>
+</body>
+</html>

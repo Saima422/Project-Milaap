@@ -1,0 +1,16 @@
+{
+  "name": "kumbh-lost-and-found",
+  "version": "1.0.0",
+  "description": "Lost and Found POC system for Kumbh Mela",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "booth-a": "PORT=3001 BOOTH_ID=Booth-A node server.js",
+    "booth-b": "PORT=3002 BOOTH_ID=Booth-B node server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.4.3",
+    "cors": "^2.8.5",
+    "express": "^4.18.2"
+  }
+}

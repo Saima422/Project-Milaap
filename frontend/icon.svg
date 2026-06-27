@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Location pin shape -->
+  <path d="M32 4C20.954 4 12 12.954 12 24c0 16 20 36 20 36s20-20 20-36C52 12.954 43.046 4 32 4z" fill="#1D9E75"/>
+  <!-- Person silhouette: head -->
+  <circle cx="32" cy="20" r="5" fill="#ffffff"/>
+  <!-- Person silhouette: body -->
+  <path d="M23 36c0-5 4.03-9 9-9s9 4 9 9" fill="#ffffff"/>
+</svg>

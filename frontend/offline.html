@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1D9E75">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Sahayak">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="styles.css">
+  <title>Offline — Kumbh Sahayak</title>
+</head>
+<body>
+  <nav class="navbar">
+    <span class="navbar-brand">Kumbh Sahayak</span>
+    <span class="navbar-page">Offline</span>
+  </nav>
+
+  <div class="page" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;text-align:center;">
+    <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 64 64" fill="none" style="margin-bottom:20px;opacity:0.5;">
+      <path d="M32 4C20.954 4 12 12.954 12 24c0 16 20 36 20 36s20-20 20-36C52 12.954 43.046 4 32 4z" fill="#1D9E75"/>
+      <circle cx="32" cy="20" r="5" fill="#fff"/>
+      <path d="M23 36c0-5 4.03-9 9-9s9 4 9 9" fill="#fff"/>
+    </svg>
+    <h1 style="color:var(--text-primary);margin-bottom:8px;">Kumbh Sahayak</h1>
+    <p style="color:var(--text-secondary);font-size:1.1rem;max-width:280px;">
+      You are offline. Please check your connection and try again.
+    </p>
+    <button class="btn btn-primary btn-sm" style="margin-top:24px;" onclick="window.location.reload()">
+      Try Again
+    </button>
+  </div>
+</body>
+</html>

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1D9E75">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Sahayak">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="styles.css">
+  <script src="install-prompt.js"></script>
+  <title>Operator — Kumbh Sahayak</title>
+  <style>
+    .match-card-wrapper { border-radius: var(--radius); overflow: hidden; margin-bottom: 24px; }
+    .person-name { font-weight: 700; font-size: 0.95rem; margin: 6px 0 4px; }
+    .person-meta { font-size: 0.8rem; color: var(--text-secondary); }
+    .contact-row { font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px; }
+    .case-id-small { font-size: 0.7rem; color: var(--text-secondary); font-family: monospace; margin-top: 4px; }
+    @media (max-width: 500px) {
+      .match-inner { grid-template-columns: 1fr 60px 1fr; gap: 8px; }
+      .photo-large { width: 60px !important; height: 60px !important; }
+      .confidence-ring { width: 50px; height: 50px; font-size: 0.9rem; }
+    }
+  </style>
+</head>
+<body>
+  <div id="install-banner" style="display:none; align-items:center; justify-content:space-between; background:#1D9E75; color:white; padding:10px 16px; font-size:14px; gap:8px;">
+    <span>Install Kumbh Sahayak for offline use</span>
+    <div style="display:flex;gap:8px;flex-shrink:0">
+      <button onclick="installApp()" style="background:white; color:#1D9E75; border:none; padding:6px 14px; border-radius:6px; font-weight:600; cursor:pointer; font-size:13px;">Install</button>
+      <button onclick="dismissBanner()" style="background:transparent; color:white; border:none; font-size:18px; cursor:pointer; padding:0 4px;">x</button>
+    </div>
+  </div>
+  <nav class="navbar">
+    <span class="navbar-brand">Kumbh Sahayak</span>
+    <span class="navbar-page">Operator</span>
+  </nav>
+
+  <div id="toast" class="toast"></div>
+
+  <div class="page">
+    <!-- Stats bar -->
+    <div class="stats-bar" id="stats-bar">
+      <div class="stat-card">
+        <div class="stat-value" id="stat-pending">—</div>
+        <div class="stat-label">Pending</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-confirmed" style="color:#1D9E75;">—</div>
+        <div class="stat-label">Confirmed Today</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-rejected" style="color:#E24B4A;">—</div>
+        <div class="stat-label">Rejected Today</div>
+      </div>
+    </div>
+
+    <!-- Countdown -->
+    <div class="countdown" id="countdown">Refreshing in 15s</div>
+
+    <!-- Match cards -->
+    <div id="matches-container"></div>
+  </div>
+
+  <nav class="bottom-nav">
+    <a href="intake.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5"/><path d="M17.5 3.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 8.5-8.5z"/></svg>
+      Intake
+    </a>
+    <a href="scanner.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3m0 4h4m-4-4v4m-3-7h7"/></svg>
+      Scanner
+    </a>
+    <a href="operator.html" class="active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+      Operator
+    </a>
+    <a href="dashboard.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </a>
+  </nav>
+
+  <script>
+    const BOOTH_A = 'http://localhost:3001';
+    const REFRESH_INTERVAL = 15;
+    let countdown = REFRESH_INTERVAL;
+    let countdownTimer = null;
+    let confirmedToday = 0;
+    let rejectedToday = 0;
+    const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+
+    function showToast(msg, type = 'success') {
+      const t = document.getElementById('toast');
+      t.className = 'toast show toast-' + type;
+      t.textContent = msg;
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => t.classList.remove('show'), 5000);
+    }
+
+    function photoOrPlaceholder(base64, name) {
+      if (base64) return `<img class="photo-large" src="${base64}" alt="${name || ''}">`;
+      return `<div class="photo-large" style="display:flex;align-items:center;justify-content:center;font-size:1.8rem;background:var(--background);">👤</div>`;
+    }
+
+    function pillsHtml(items) {
+      return items.filter(Boolean).map(v => `<span class="pill badge-found" style="font-size:0.7rem;">${v}</span>`).join(' ');
+    }
+
+    function buildMatchCard(m) {
+      const fc = m.found_case;
+      const mc = m.missing_case;
+      const score = m.confidence_score;
+      const ringClass = score >= 80 ? 'confidence-high' : 'confidence-med';
+
+      const card = document.createElement('div');
+      card.className = 'card match-card-wrapper';
+      card.id = 'match-' + m.match_id;
+      card.innerHTML = `
+        <div class="match-inner">
+          <div class="match-side">
+            <span class="badge badge-found">FOUND</span>
+            ${photoOrPlaceholder(fc.photo_base64, fc.name)}
+            <div class="person-name">${fc.name || 'Unknown'}</div>
+            <div class="person-meta">${fc.age ? fc.age + ' yrs' : ''} ${fc.gender || ''}</div>
+            <div class="pills-row" style="justify-content:center;">${pillsHtml([fc.language, fc.zone])}</div>
+            <div class="person-meta" style="margin-top:4px;">${fc.booth_id || ''}</div>
+            <div class="case-id-small">${fc.case_id}</div>
+          </div>
+          <div class="match-center">
+            <div class="confidence-ring ${ringClass}">${score}</div>
+            <div class="match-divider" style="font-size:0.6rem;text-align:center;">Match<br>confidence</div>
+            <div style="width:1px;height:30px;background:var(--border);margin:4px 0;"></div>
+            <div style="font-size:0.7rem;font-weight:700;color:var(--text-secondary);">VS</div>
+            <div style="width:1px;height:30px;background:var(--border);margin:4px 0;"></div>
+          </div>
+          <div class="match-side">
+            <span class="badge badge-missing">MISSING</span>
+            ${photoOrPlaceholder(mc.photo_base64, mc.name)}
+            <div class="person-name">${mc.name || 'Unknown'}</div>
+            <div class="person-meta">${mc.age ? mc.age + ' yrs' : ''} ${mc.gender || ''}</div>
+            <div class="pills-row" style="justify-content:center;">${pillsHtml([mc.language, mc.zone])}</div>
+            <div class="person-meta" style="margin-top:4px;">${mc.booth_id || ''}</div>
+            <div class="contact-row">${mc.contact_number || ''}</div>
+            <div class="case-id-small">${mc.case_id}</div>
+          </div>
+        </div>
+        <div class="match-actions">
+          <button class="btn btn-success" onclick="confirmMatch('${m.match_id}', this)">✓ Confirm Reunification</button>
+          <button class="btn btn-danger" onclick="rejectMatch('${m.match_id}', this)">✗ Reject Match</button>
+        </div>
+      `;
+      return card;
+    }
+
+    async function loadData() {
+      try {
+        const res = await fetch(BOOTH_A + '/cases');
+        const data = await res.json();
+        const pending = (data.matches || []).filter(m => m.status === 'pending');
+
+        document.getElementById('stat-pending').textContent = pending.length;
+
+        // Count today's confirmed/rejected from all matches
+        // We track these locally since we don't have timestamps in response
+        document.getElementById('stat-confirmed').textContent = confirmedToday;
+        document.getElementById('stat-rejected').textContent = rejectedToday;
+
+        const container = document.getElementById('matches-container');
+        // Only rebuild if count differs (avoid destroying in-progress cards)
+        const existingIds = new Set([...container.querySelectorAll('[id^="match-"]')].map(el => el.id.replace('match-', '')));
+        const incomingIds = new Set(pending.map(m => m.match_id));
+
+        // Add new cards
+        for (const m of pending) {
+          if (!existingIds.has(m.match_id)) {
+            container.appendChild(buildMatchCard(m));
+          }
+        }
+
+        // Remove cards no longer pending
+        for (const id of existingIds) {
+          if (!incomingIds.has(id)) {
+            const el = document.getElementById('match-' + id);
+            if (el) el.remove();
+          }
+        }
+
+        // Show empty state
+        if (pending.length === 0 && container.children.length === 0) {
+          container.innerHTML = `
+            <div class="empty-state">
+              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+              <p>No pending matches.<br>Run sync from dashboard to check for new matches.</p>
+              <a href="dashboard.html" class="btn btn-ghost btn-sm" style="margin-top:8px;">Go to Dashboard</a>
+            </div>`;
+        } else if (pending.length > 0 && container.querySelector('.empty-state')) {
+          container.querySelector('.empty-state').remove();
+        }
+      } catch {
+        // Network error — keep showing existing data
+      }
+    }
+
+    async function confirmMatch(matchId, btn) {
+      btn.disabled = true;
+      btn.textContent = 'Confirming…';
+      try {
+        const res = await fetch(BOOTH_A + '/match/confirm', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ match_id: matchId })
+        });
+        if (!res.ok) throw new Error('Server error');
+        confirmedToday++;
+        document.getElementById('stat-confirmed').textContent = confirmedToday;
+        const card = document.getElementById('match-' + matchId);
+        if (card) {
+          card.innerHTML = `<div class="reunion-banner">🎉 Reunification Complete! Family has been notified.</div>`;
+          setTimeout(() => { card.classList.add('fade-out'); setTimeout(() => card.remove(), 350); }, 2500);
+        }
+        document.getElementById('stat-pending').textContent = Math.max(0,
+          parseInt(document.getElementById('stat-pending').textContent || 0) - 1);
+      } catch (err) {
+        showToast('Error confirming: ' + err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = '✓ Confirm Reunification';
+      }
+    }
+
+    async function rejectMatch(matchId, btn) {
+      btn.disabled = true;
+      btn.textContent = 'Rejecting…';
+      try {
+        const res = await fetch(BOOTH_A + '/match/reject', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ match_id: matchId })
+        });
+        if (!res.ok) throw new Error('Server error');
+        rejectedToday++;
+        document.getElementById('stat-rejected').textContent = rejectedToday;
+        const card = document.getElementById('match-' + matchId);
+        if (card) { card.classList.add('fade-out'); setTimeout(() => card.remove(), 350); }
+        document.getElementById('stat-pending').textContent = Math.max(0,
+          parseInt(document.getElementById('stat-pending').textContent || 0) - 1);
+      } catch (err) {
+        showToast('Error rejecting: ' + err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = '✗ Reject Match';
+      }
+    }
+
+    function startCountdown() {
+      clearInterval(countdownTimer);
+      countdown = REFRESH_INTERVAL;
+      countdownTimer = setInterval(() => {
+        countdown--;
+        document.getElementById('countdown').textContent = `Refreshing in ${countdown}s`;
+        if (countdown <= 0) {
+          countdown = REFRESH_INTERVAL;
+          loadData();
+        }
+      }, 1000);
+    }
+
+    loadData();
+    startCountdown();
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => { navigator.serviceWorker.register('/service-worker.js'); });
+    }
+  </script>
+</body>
+</html>

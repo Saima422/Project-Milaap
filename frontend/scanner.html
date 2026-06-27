@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1D9E75">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Sahayak">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="styles.css">
+  <script src="install-prompt.js"></script>
+  <title>Scanner — Kumbh Sahayak</title>
+</head>
+<body>
+  <div id="install-banner" style="display:none; align-items:center; justify-content:space-between; background:#1D9E75; color:white; padding:10px 16px; font-size:14px; gap:8px;">
+    <span>Install Kumbh Sahayak for offline use</span>
+    <div style="display:flex;gap:8px;flex-shrink:0">
+      <button onclick="installApp()" style="background:white; color:#1D9E75; border:none; padding:6px 14px; border-radius:6px; font-weight:600; cursor:pointer; font-size:13px;">Install</button>
+      <button onclick="dismissBanner()" style="background:transparent; color:white; border:none; font-size:18px; cursor:pointer; padding:0 4px;">x</button>
+    </div>
+  </div>
+  <nav class="navbar">
+    <span class="navbar-brand">Kumbh Sahayak</span>
+    <span class="navbar-page">Scanner</span>
+  </nav>
+
+  <div id="toast" class="toast"></div>
+
+  <div class="page">
+    <!-- Scanner section -->
+    <div class="card" id="scanner-section">
+      <h2 style="margin-bottom:12px;">Scan Wristband</h2>
+      <div id="scanner-reader" style="width:100%;"></div>
+      <div id="camera-error" style="display:none; background:#FCEBEB; border:1px solid #E24B4A; color:#A32D2D; padding:12px 16px; border-radius:8px; font-size:14px; margin-top:8px;">
+        Camera access denied. Please allow camera access in your browser settings to scan wristbands.
+      </div>
+      <button id="scanner-btn" class="btn btn-primary" style="margin-top:12px;" onclick="toggleScanner()">
+        📷 Start Scanning
+      </button>
+    </div>
+
+    <!-- Not found message -->
+    <div id="not-found-msg" class="card" style="display:none;text-align:center;">
+      <p style="font-size:1rem;color:var(--text-secondary);">No profile found for this wristband.</p>
+      <p style="font-size:0.9rem;color:var(--text-secondary);">Please use the intake form to create a case manually.</p>
+      <a href="intake.html" class="btn btn-primary btn-sm" style="display:inline-block;margin-top:8px;">Go to Intake Form</a>
+    </div>
+
+    <!-- Profile card -->
+    <div id="profile-section" style="display:none;">
+      <div class="card profile-card">
+        <img id="profile-photo" class="photo-large" style="width:100px;height:100px;margin:0 auto 12px;" src="" alt="">
+        <div class="profile-name" id="profile-name"></div>
+        <div class="pills-row" style="justify-content:center;" id="profile-pills"></div>
+        <div style="margin-top:10px;font-size:0.8rem;color:var(--text-secondary);">
+          Case ID: <span id="profile-case-id" style="font-family:monospace;"></span>
+        </div>
+        <div style="margin-top:4px;" id="profile-status-badge"></div>
+        <div style="margin-top:2px;font-size:0.8rem;color:var(--text-secondary);">Booth: <span id="profile-booth"></span></div>
+      </div>
+
+      <div style="margin-bottom:16px;">
+        <button class="btn btn-primary" style="margin-bottom:10px;" onclick="markFoundAtBoothB()">
+          Mark as Found at Booth B
+        </button>
+        <button class="btn btn-ghost" onclick="resetScanner()">
+          Scan Another
+        </button>
+      </div>
+    </div>
+
+    <!-- Manual fallback -->
+    <div style="text-align:center;padding:12px 0;border-top:1px solid var(--border);margin-top:8px;">
+      <a href="intake.html" style="color:var(--text-secondary);font-size:0.9rem;">Can't scan? Use intake form →</a>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <a href="intake.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5"/><path d="M17.5 3.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 8.5-8.5z"/></svg>
+      Intake
+    </a>
+    <a href="scanner.html" class="active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3m0 4h4m-4-4v4m-3-7h7"/></svg>
+      Scanner
+    </a>
+    <a href="operator.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+      Operator
+    </a>
+    <a href="dashboard.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </a>
+  </nav>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+  <script>
+    const BOOTH_B = 'http://localhost:3002';
+    let qrCode = null;
+    let scannerRunning = false;
+    let currentProfile = null;
+
+    function showToast(msg, type = 'success') {
+      const t = document.getElementById('toast');
+      t.className = 'toast show toast-' + type;
+      t.textContent = msg;
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => t.classList.remove('show'), 4000);
+    }
+
+    function toggleScanner() {
+      if (scannerRunning) stopScanner();
+      else startScanner();
+    }
+
+    async function startScanner() {
+      try {
+        await navigator.mediaDevices.getUserMedia({ video: true });
+      } catch (err) {
+        document.getElementById('scanner-reader').style.display = 'none';
+        document.getElementById('camera-error').style.display = 'block';
+        return;
+      }
+      if (!qrCode) qrCode = new Html5Qrcode('scanner-reader');
+      try {
+        await qrCode.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          onScanSuccess,
+          () => {}
+        );
+        scannerRunning = true;
+        document.getElementById('scanner-btn').textContent = '⏹ Stop Scanning';
+      } catch (err) {
+        document.getElementById('scanner-reader').style.display = 'none';
+        document.getElementById('camera-error').style.display = 'block';
+      }
+    }
+
+    function stopScanner() {
+      if (qrCode && scannerRunning) {
+        qrCode.stop().then(() => {
+          scannerRunning = false;
+          document.getElementById('scanner-btn').textContent = '📷 Start Scanning';
+        });
+      }
+    }
+
+    async function onScanSuccess(wristband_id) {
+      stopScanner();
+      try {
+        const res = await fetch(BOOTH_B + '/lookup/' + encodeURIComponent(wristband_id));
+        if (res.status === 404) {
+          document.getElementById('not-found-msg').style.display = 'block';
+          document.getElementById('profile-section').style.display = 'none';
+          return;
+        }
+        const profile = await res.json();
+        currentProfile = profile;
+        showProfile(profile);
+      } catch {
+        showToast('Network error — cannot reach Booth B', 'error');
+      }
+    }
+
+    function showProfile(p) {
+      document.getElementById('not-found-msg').style.display = 'none';
+      document.getElementById('profile-section').style.display = 'block';
+
+      const photo = document.getElementById('profile-photo');
+      if (p.photo_base64) { photo.src = p.photo_base64; photo.style.display = 'block'; }
+      else { photo.style.display = 'none'; }
+
+      document.getElementById('profile-name').textContent = p.name || 'Unknown';
+      document.getElementById('profile-case-id').textContent = p.case_id;
+      document.getElementById('profile-booth').textContent = p.booth_id || '—';
+
+      const statusMap = { pending: 'badge-pending', searching: 'badge-searching', reunified: 'badge-reunified' };
+      document.getElementById('profile-status-badge').innerHTML =
+        `<span class="badge ${statusMap[p.status] || ''}">${p.status}</span>`;
+
+      const pills = [
+        p.age ? p.age + ' yrs' : null,
+        p.gender, p.language, p.zone
+      ].filter(Boolean).map(v => `<span class="pill badge-found">${v}</span>`).join('');
+      document.getElementById('profile-pills').innerHTML = pills;
+    }
+
+    async function markFoundAtBoothB() {
+      if (!currentProfile) return;
+      const btn = event.target;
+      btn.disabled = true;
+      btn.textContent = 'Saving…';
+      try {
+        const body = {
+          name: currentProfile.name || '',
+          age: currentProfile.age,
+          gender: currentProfile.gender,
+          language: currentProfile.language,
+          zone: currentProfile.zone,
+          photo_base64: currentProfile.photo_base64 || '',
+          contact_number: currentProfile.contact_number || '',
+          wristband_id: currentProfile.wristband_id,
+        };
+        const res = await fetch(BOOTH_B + '/case/found', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Server error');
+        showToast('Case created at Booth B — Case ID: ' + data.case_id, 'success');
+        btn.textContent = '✓ Created at Booth B';
+      } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Mark as Found at Booth B';
+      }
+    }
+
+    function resetScanner() {
+      currentProfile = null;
+      document.getElementById('profile-section').style.display = 'none';
+      document.getElementById('not-found-msg').style.display = 'none';
+      document.getElementById('scanner-reader').innerHTML = '';
+      qrCode = null;
+      scannerRunning = false;
+      document.getElementById('scanner-btn').textContent = '📷 Start Scanning';
+    }
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => { navigator.serviceWorker.register('/service-worker.js'); });
+    }
+  </script>
+</body>
+</html>

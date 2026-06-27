@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1D9E75">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Sahayak">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="stylesheet" href="styles.css">
+  <script src="install-prompt.js"></script>
+  <title>Intake — Kumbh Sahayak</title>
+</head>
+<body>
+  <div id="install-banner" style="display:none; align-items:center; justify-content:space-between; background:#1D9E75; color:white; padding:10px 16px; font-size:14px; gap:8px;">
+    <span>Install Kumbh Sahayak for offline use</span>
+    <div style="display:flex;gap:8px;flex-shrink:0">
+      <button onclick="installApp()" style="background:white; color:#1D9E75; border:none; padding:6px 14px; border-radius:6px; font-weight:600; cursor:pointer; font-size:13px;">Install</button>
+      <button onclick="dismissBanner()" style="background:transparent; color:white; border:none; font-size:18px; cursor:pointer; padding:0 4px;">x</button>
+    </div>
+  </div>
+  <nav class="navbar">
+    <span class="navbar-brand">Kumbh Sahayak</span>
+    <span class="navbar-page">Intake</span>
+  </nav>
+
+  <div id="toast" class="toast"></div>
+
+  <div class="page">
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('found', this)">Found Pilgrim</button>
+      <button class="tab-btn" onclick="switchTab('missing', this)">Missing Person</button>
+    </div>
+
+    <!-- FOUND FORM -->
+    <div id="tab-found" class="tab-panel active">
+      <form id="form-found" onsubmit="submitFound(event)">
+
+        <!-- 1. Wristband scanner -->
+        <div class="form-group">
+          <label>Wristband</label>
+          <input type="hidden" id="found-wristband-id">
+          <button type="button" id="scan-btn" class="btn btn-ghost" onclick="toggleScanner()">
+            📷 Scan Wristband
+          </button>
+          <div id="qr-reader" style="margin-top:10px;"></div>
+          <div id="camera-error" style="display:none; background:#FCEBEB; border:1px solid #E24B4A; color:#A32D2D; padding:12px 16px; border-radius:8px; font-size:14px; margin-top:8px;">
+            Camera access denied. Please allow camera access in your browser settings to scan wristbands.
+          </div>
+          <p id="scanned-display" style="margin-top:8px;font-size:0.85rem;color:var(--text-secondary);display:none;"></p>
+          <div style="margin-top:10px;">
+            <label style="text-transform:none;font-weight:400;color:var(--text-secondary);">Or enter wristband ID manually</label>
+            <input type="text" id="wristband-manual" placeholder="WB-XXXXXXXX-XXXX" oninput="onManualWristband(this.value)">
+          </div>
+        </div>
+
+        <!-- 2. Name -->
+        <div class="form-group">
+          <label>Name <span style="font-weight:400;color:var(--text-secondary)">(optional)</span></label>
+          <input type="text" id="found-name" placeholder="Enter name if known">
+        </div>
+
+        <!-- 3. Age -->
+        <div class="form-group">
+          <label>Age *</label>
+          <input type="number" id="found-age" min="1" max="120" required placeholder="Age in years">
+        </div>
+
+        <!-- 4. Gender -->
+        <div class="form-group">
+          <label>Gender *</label>
+          <select id="found-gender" required>
+            <option value="">Select Gender</option>
+            <option>Male</option>
+            <option>Female</option>
+            <option>Other</option>
+          </select>
+        </div>
+
+        <!-- 5. Language -->
+        <div class="form-group">
+          <label>Language *</label>
+          <select id="found-language" required>
+            <option value="">Select Language</option>
+            <option>Hindi</option>
+            <option>Marathi</option>
+            <option>Bengali</option>
+            <option>Tamil</option>
+            <option>Other</option>
+          </select>
+        </div>
+
+        <!-- 6. Zone -->
+        <div class="form-group">
+          <label>Zone Found *</label>
+          <select id="found-zone" required>
+            <option value="">Select Zone</option>
+            <option>Zone-1</option>
+            <option>Zone-2</option>
+            <option>Zone-3</option>
+            <option>Zone-4</option>
+            <option>Zone-5</option>
+          </select>
+        </div>
+
+        <!-- 7. Photo -->
+        <div class="form-group">
+          <label>Photo *</label>
+          <input type="file" id="found-photo" accept="image/*" required onchange="previewPhoto('found-photo','found-preview')">
+          <img id="found-preview" class="photo-preview" alt="Preview">
+        </div>
+
+        <!-- 8. Submit -->
+        <button type="submit" id="btn-found" class="btn btn-primary">Create Found Case</button>
+      </form>
+    </div>
+
+    <!-- MISSING FORM -->
+    <div id="tab-missing" class="tab-panel">
+      <form id="form-missing" onsubmit="submitMissing(event)">
+
+        <!-- 1. Name -->
+        <div class="form-group">
+          <label>Name *</label>
+          <input type="text" id="missing-name" required placeholder="Full name">
+        </div>
+
+        <!-- 2. Age -->
+        <div class="form-group">
+          <label>Age *</label>
+          <input type="number" id="missing-age" min="1" max="120" required placeholder="Age in years">
+        </div>
+
+        <!-- 3. Gender -->
+        <div class="form-group">
+          <label>Gender *</label>
+          <select id="missing-gender" required>
+            <option value="">Select Gender</option>
+            <option>Male</option>
+            <option>Female</option>
+            <option>Other</option>
+          </select>
+        </div>
+
+        <!-- 4. Language -->
+        <div class="form-group">
+          <label>Language *</label>
+          <select id="missing-language" required>
+            <option value="">Select Language</option>
+            <option>Hindi</option>
+            <option>Marathi</option>
+            <option>Bengali</option>
+            <option>Tamil</option>
+            <option>Other</option>
+          </select>
+        </div>
+
+        <!-- 5. Zone last seen -->
+        <div class="form-group">
+          <label>Zone Last Seen *</label>
+          <select id="missing-zone" required>
+            <option value="">Select Zone</option>
+            <option>Zone-1</option>
+            <option>Zone-2</option>
+            <option>Zone-3</option>
+            <option>Zone-4</option>
+            <option>Zone-5</option>
+          </select>
+        </div>
+
+        <!-- 6. Contact -->
+        <div class="form-group">
+          <label>Contact Number *</label>
+          <input type="tel" id="missing-contact" required placeholder="Mobile number">
+        </div>
+
+        <!-- 7. Photo -->
+        <div class="form-group">
+          <label>Photo *</label>
+          <input type="file" id="missing-photo" accept="image/*" required onchange="previewPhoto('missing-photo','missing-preview')">
+          <img id="missing-preview" class="photo-preview" alt="Preview">
+        </div>
+
+        <!-- 8. Submit -->
+        <button type="submit" id="btn-missing" class="btn btn-primary">Report Missing Person</button>
+      </form>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <a href="intake.html" class="active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5"/><path d="M17.5 3.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 8.5-8.5z"/></svg>
+      Intake
+    </a>
+    <a href="scanner.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3m0 4h4m-4-4v4m-3-7h7"/></svg>
+      Scanner
+    </a>
+    <a href="operator.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+      Operator
+    </a>
+    <a href="dashboard.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </a>
+  </nav>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+  <script>
+    const BOOTH_A = 'http://localhost:3001';
+    let html5QrCode = null;
+    let scannerRunning = false;
+
+    function switchTab(name, btn) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('tab-' + name).classList.add('active');
+    }
+
+    function showToast(msg, type = 'success') {
+      const t = document.getElementById('toast');
+      t.className = 'toast show toast-' + type;
+      t.textContent = msg;
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => t.classList.remove('show'), 4000);
+    }
+
+    function previewPhoto(inputId, previewId) {
+      const file = document.getElementById(inputId).files[0];
+      const preview = document.getElementById(previewId);
+      if (!file) { preview.classList.remove('show'); return; }
+      const reader = new FileReader();
+      reader.onload = e => { preview.src = e.target.result; preview.classList.add('show'); };
+      reader.readAsDataURL(file);
+    }
+
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function toggleScanner() {
+      if (scannerRunning) {
+        stopScanner();
+      } else {
+        startScanner();
+      }
+    }
+
+    async function startScanner() {
+      try {
+        await navigator.mediaDevices.getUserMedia({ video: true });
+      } catch (err) {
+        document.getElementById('qr-reader').style.display = 'none';
+        document.getElementById('camera-error').style.display = 'block';
+        return;
+      }
+      if (!html5QrCode) html5QrCode = new Html5Qrcode('qr-reader');
+      try {
+        await html5QrCode.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          onScanSuccess,
+          () => {}
+        );
+        scannerRunning = true;
+        document.getElementById('scan-btn').textContent = '⏹ Stop Scanner';
+      } catch (err) {
+        document.getElementById('qr-reader').style.display = 'none';
+        document.getElementById('camera-error').style.display = 'block';
+      }
+    }
+
+    function stopScanner() {
+      if (html5QrCode && scannerRunning) {
+        html5QrCode.stop().then(() => {
+          scannerRunning = false;
+          document.getElementById('scan-btn').textContent = '📷 Scan Wristband';
+        });
+      }
+    }
+
+    function onScanSuccess(text) {
+      stopScanner();
+      document.getElementById('found-wristband-id').value = text;
+      document.getElementById('wristband-manual').value = text;
+      const disp = document.getElementById('scanned-display');
+      disp.textContent = '✓ Wristband: ' + text;
+      disp.style.display = 'block';
+      const btn = document.getElementById('scan-btn');
+      btn.textContent = '✓ Wristband Scanned';
+      btn.classList.remove('btn-ghost');
+      btn.classList.add('btn-success');
+    }
+
+    function onManualWristband(val) {
+      document.getElementById('found-wristband-id').value = val;
+    }
+
+    async function submitFound(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btn-found');
+      btn.disabled = true;
+      btn.textContent = 'Saving…';
+      try {
+        const photoFile = document.getElementById('found-photo').files[0];
+        const photo_base64 = photoFile ? await fileToBase64(photoFile) : '';
+        const body = {
+          name: document.getElementById('found-name').value || '',
+          age: parseInt(document.getElementById('found-age').value),
+          gender: document.getElementById('found-gender').value,
+          language: document.getElementById('found-language').value,
+          zone: document.getElementById('found-zone').value,
+          photo_base64,
+          contact_number: '',
+          wristband_id: document.getElementById('found-wristband-id').value || undefined,
+        };
+        const res = await fetch(BOOTH_A + '/case/found', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Server error');
+        showToast('Found case created — Case ID: ' + data.case_id, 'success');
+        document.getElementById('form-found').reset();
+        document.getElementById('found-preview').classList.remove('show');
+        document.getElementById('found-wristband-id').value = '';
+        document.getElementById('scanned-display').style.display = 'none';
+        const scanBtn = document.getElementById('scan-btn');
+        scanBtn.textContent = '📷 Scan Wristband';
+        scanBtn.className = 'btn btn-ghost';
+      } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Create Found Case';
+      }
+    }
+
+    async function submitMissing(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btn-missing');
+      btn.disabled = true;
+      btn.textContent = 'Saving…';
+      try {
+        const photoFile = document.getElementById('missing-photo').files[0];
+        const photo_base64 = photoFile ? await fileToBase64(photoFile) : '';
+        const body = {
+          name: document.getElementById('missing-name').value,
+          age: parseInt(document.getElementById('missing-age').value),
+          gender: document.getElementById('missing-gender').value,
+          language: document.getElementById('missing-language').value,
+          zone: document.getElementById('missing-zone').value,
+          photo_base64,
+          contact_number: document.getElementById('missing-contact').value,
+        };
+        const res = await fetch(BOOTH_A + '/case/missing', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Server error');
+        showToast('Missing report filed — Case ID: ' + data.case_id, 'success');
+        document.getElementById('form-missing').reset();
+        document.getElementById('missing-preview').classList.remove('show');
+      } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Report Missing Person';
+      }
+    }
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => { navigator.serviceWorker.register('/service-worker.js'); });
+    }
+  </script>
+</body>
+</html>
