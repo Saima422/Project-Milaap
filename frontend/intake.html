@@ -54,6 +54,9 @@
             <label style="text-transform:none;font-weight:400;color:var(--text-secondary);">Or enter wristband ID manually</label>
             <input type="text" id="wristband-manual" placeholder="WB-XXXXXXXX-XXXX" oninput="onManualWristband(this.value)">
           </div>
+          <div id="profile-fetched-banner" style="display:none;margin-top:10px;background:#E6F7F1;border:1px solid #1D9E75;color:#155a3e;padding:10px 14px;border-radius:8px;font-size:0.85rem;">
+            Profile loaded from database — fields pre-filled. You can still edit them before saving.
+          </div>
         </div>
 
         <!-- 2. Name -->
@@ -84,24 +87,44 @@
           <label>Language *</label>
           <select id="found-language" required>
             <option value="">Select Language</option>
-            <option>Hindi</option>
-            <option>Marathi</option>
+            <option>Awadhi</option>
             <option>Bengali</option>
+            <option>Bhojpuri</option>
+            <option>Gujarati</option>
+            <option>Hindi</option>
+            <option>Kannada</option>
+            <option>Maithili</option>
+            <option>Marathi</option>
             <option>Tamil</option>
-            <option>Other</option>
+            <option>Telugu</option>
           </select>
         </div>
 
         <!-- 6. Zone -->
         <div class="form-group">
-          <label>Zone Found *</label>
+          <label>Location Found *</label>
           <select id="found-zone" required>
-            <option value="">Select Zone</option>
-            <option>Zone-1</option>
-            <option>Zone-2</option>
-            <option>Zone-3</option>
-            <option>Zone-4</option>
-            <option>Zone-5</option>
+            <option value="">Select Location</option>
+            <option>Adgaon Parking</option>
+            <option>Bus Stand Nashik</option>
+            <option>Dasak Ghat</option>
+            <option>Dindori Road Crossing</option>
+            <option>Gauri Patangan</option>
+            <option>Kapila Sangam</option>
+            <option>Kushavart Kund</option>
+            <option>Laxmi Narayan Ghat</option>
+            <option>Madsangvi Transit</option>
+            <option>Main Police Chowki</option>
+            <option>Nandur Ghat</option>
+            <option>Nashik Road Station</option>
+            <option>Panchavati Circle</option>
+            <option>Rajur Bahula</option>
+            <option>Ramkund Ghat</option>
+            <option>Sadhugram Gate 1</option>
+            <option>Sadhugram Gate 2</option>
+            <option>Takli Sangam</option>
+            <option>Trimbak Road</option>
+            <option>Trimbakeshwar Approach</option>
           </select>
         </div>
 
@@ -149,24 +172,44 @@
           <label>Language *</label>
           <select id="missing-language" required>
             <option value="">Select Language</option>
-            <option>Hindi</option>
-            <option>Marathi</option>
+            <option>Awadhi</option>
             <option>Bengali</option>
+            <option>Bhojpuri</option>
+            <option>Gujarati</option>
+            <option>Hindi</option>
+            <option>Kannada</option>
+            <option>Maithili</option>
+            <option>Marathi</option>
             <option>Tamil</option>
-            <option>Other</option>
+            <option>Telugu</option>
           </select>
         </div>
 
         <!-- 5. Zone last seen -->
         <div class="form-group">
-          <label>Zone Last Seen *</label>
+          <label>Last Seen Location *</label>
           <select id="missing-zone" required>
-            <option value="">Select Zone</option>
-            <option>Zone-1</option>
-            <option>Zone-2</option>
-            <option>Zone-3</option>
-            <option>Zone-4</option>
-            <option>Zone-5</option>
+            <option value="">Select Location</option>
+            <option>Adgaon Parking</option>
+            <option>Bus Stand Nashik</option>
+            <option>Dasak Ghat</option>
+            <option>Dindori Road Crossing</option>
+            <option>Gauri Patangan</option>
+            <option>Kapila Sangam</option>
+            <option>Kushavart Kund</option>
+            <option>Laxmi Narayan Ghat</option>
+            <option>Madsangvi Transit</option>
+            <option>Main Police Chowki</option>
+            <option>Nandur Ghat</option>
+            <option>Nashik Road Station</option>
+            <option>Panchavati Circle</option>
+            <option>Rajur Bahula</option>
+            <option>Ramkund Ghat</option>
+            <option>Sadhugram Gate 1</option>
+            <option>Sadhugram Gate 2</option>
+            <option>Takli Sangam</option>
+            <option>Trimbak Road</option>
+            <option>Trimbakeshwar Approach</option>
           </select>
         </div>
 
@@ -303,10 +346,54 @@
       btn.textContent = '✓ Wristband Scanned';
       btn.classList.remove('btn-ghost');
       btn.classList.add('btn-success');
+      lookupWristband(text);
     }
 
+    let _wristbandTimer = null;
     function onManualWristband(val) {
       document.getElementById('found-wristband-id').value = val;
+      clearTimeout(_wristbandTimer);
+      if (!val.trim()) { clearProfile(); return; }
+      _wristbandTimer = setTimeout(() => lookupWristband(val.trim()), 500);
+    }
+
+    async function lookupWristband(wristband_id) {
+      try {
+        const res = await fetch(BOOTH_A + '/lookup/' + encodeURIComponent(wristband_id));
+        if (!res.ok) { clearProfile(); return; }
+        const profile = await res.json();
+        applyProfile(profile);
+      } catch {
+        clearProfile();
+      }
+    }
+
+    function applyProfile(p) {
+      if (p.name)     { document.getElementById('found-name').value = p.name; }
+      if (p.age)      { document.getElementById('found-age').value = p.age; }
+      if (p.gender)   { document.getElementById('found-gender').value = p.gender; }
+      if (p.language) { document.getElementById('found-language').value = p.language; }
+      if (p.zone)     { document.getElementById('found-zone').value = p.zone; }
+      if (p.photo_base64) {
+        const preview = document.getElementById('found-preview');
+        preview.src = p.photo_base64;
+        preview.classList.add('show');
+      }
+
+      // Fields are no longer required — profile covers them
+      ['found-age', 'found-gender', 'found-language', 'found-zone', 'found-photo']
+        .forEach(id => document.getElementById(id).removeAttribute('required'));
+
+      document.getElementById('profile-fetched-banner').style.display = 'block';
+    }
+
+    function clearProfile() {
+      document.getElementById('profile-fetched-banner').style.display = 'none';
+      // Restore required only if the wristband field is now empty
+      if (!document.getElementById('found-wristband-id').value) {
+        ['found-age', 'found-gender', 'found-language', 'found-zone', 'found-photo']
+          .forEach(id => document.getElementById(id).setAttribute('required', ''));
+      }
     }
 
     async function submitFound(e) {
@@ -316,10 +403,15 @@
       btn.textContent = 'Saving…';
       try {
         const photoFile = document.getElementById('found-photo').files[0];
-        const photo_base64 = photoFile ? await fileToBase64(photoFile) : '';
+        const previewEl = document.getElementById('found-preview');
+        // Use newly uploaded photo, else fall back to profile photo already in the preview
+        const photo_base64 = photoFile
+          ? await fileToBase64(photoFile)
+          : (previewEl.src && previewEl.classList.contains('show') ? previewEl.src : '');
+
         const body = {
           name: document.getElementById('found-name').value || '',
-          age: parseInt(document.getElementById('found-age').value),
+          age: parseInt(document.getElementById('found-age').value) || null,
           gender: document.getElementById('found-gender').value,
           language: document.getElementById('found-language').value,
           zone: document.getElementById('found-zone').value,
@@ -338,6 +430,9 @@
         document.getElementById('found-preview').classList.remove('show');
         document.getElementById('found-wristband-id').value = '';
         document.getElementById('scanned-display').style.display = 'none';
+        document.getElementById('profile-fetched-banner').style.display = 'none';
+        ['found-age', 'found-gender', 'found-language', 'found-zone', 'found-photo']
+          .forEach(id => document.getElementById(id).setAttribute('required', ''));
         const scanBtn = document.getElementById('scan-btn');
         scanBtn.textContent = '📷 Scan Wristband';
         scanBtn.className = 'btn btn-ghost';

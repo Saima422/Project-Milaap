@@ -6,6 +6,7 @@ const {
   genId,
   insertCase,
   getCaseByWristband,
+  getCaseById,
   getAllCases,
   updateCaseStatus,
   upsertCase,
@@ -84,9 +85,10 @@ app.get('/cases', (req, res) => {
   res.json({ cases, matches });
 });
 
-// GET /lookup/:wristband_id
+// GET /lookup/:id  (tries wristband_id first, then case_id)
 app.get('/lookup/:wristband_id', (req, res) => {
-  const record = getCaseByWristband(req.params.wristband_id);
+  const id = req.params.wristband_id;
+  const record = getCaseByWristband(id) || getCaseById(id);
   if (!record) return res.status(404).json({ error: 'Not found' });
   res.json(record);
 });
