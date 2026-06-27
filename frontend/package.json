@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "main": "generate-icons.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "generate-icons": "node generate-icons.js",
+    "booth-a": "cd ../backend && npm run booth-a",
+    "booth-b": "cd ../backend && npm run booth-b"
   },
   "keywords": [],
   "author": "",

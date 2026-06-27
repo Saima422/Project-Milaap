@@ -1,10 +1,31 @@
 # Kumbh Mela — Lost and Found POC
 
+## Project Structure
+
+```
+Claude Impact Lab/
+├── backend/      — Node.js/Express API + SQLite database
+└── frontend/     — Plain HTML/CSS/JS PWA (served by backend)
+```
+
 ## Setup
 
+**Step 1 — Install backend dependencies**
 ```bash
 cd backend
 npm install
+```
+
+**Step 2 — Install frontend dependencies**
+```bash
+cd frontend
+npm install
+```
+
+**Step 3 — Generate PWA icons** _(one-time, creates icon-192.png and icon-512.png)_
+```bash
+cd frontend
+npm run generate-icons
 ```
 
 ## Running Both Booths
@@ -13,17 +34,38 @@ Open two terminals:
 
 **Terminal 1 — Booth A**
 ```bash
+# From backend/
 npm run booth-a
-# Booth: Booth-A running on port 3001
+
+# Or from frontend/
+npm run booth-a
+
+# → Booth: Booth-A running on port 3001
+# → Open http://localhost:3001/intake.html
 ```
 
 **Terminal 2 — Booth B**
 ```bash
+# From backend/
 npm run booth-b
-# Booth: Booth-B running on port 3002
+
+# Or from frontend/
+npm run booth-b
+
+# → Booth: Booth-B running on port 3002
+# → Open http://localhost:3002/intake.html
 ```
 
 Each booth writes to its own SQLite file (`kumbh-Booth-A.db` / `kumbh-Booth-B.db`).
+
+## Pages
+
+| URL | Page | Purpose |
+|-----|------|---------|
+| `/intake.html` | Intake | Register found or missing pilgrims |
+| `/scanner.html` | Scanner | Scan wristband QR to look up a pilgrim |
+| `/operator.html` | Operator | Review and confirm/reject fuzzy matches |
+| `/dashboard.html` | Dashboard | Sync booths and view all cases |
 
 ---
 
